@@ -8,6 +8,7 @@ var App = {
     PlaylistDB.init().then(function () {
       Auth.init();
       Search.init();
+      Player.init();
       self._bindNavigation();
       self._bindModals();
 

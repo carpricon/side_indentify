@@ -2,12 +2,11 @@ const UI = {
   renderVideoCard(video) {
     const duration = video.duration ? this.formatDuration(video.duration) : '';
     const thumbnail = video.thumbnailUrl || '';
-    const videoUrl = 'https://www.youtube.com/watch?v=' + video.videoId;
 
     const card = document.createElement('div');
     card.className = 'video-card';
     card.innerHTML =
-      '<div class="thumbnail" data-url="' + videoUrl + '">' +
+      '<div class="thumbnail">' +
         '<img src="' + thumbnail + '" alt="" loading="lazy">' +
         (duration ? '<span class="duration-badge">' + duration + '</span>' : '') +
       '</div>' +
@@ -25,7 +24,7 @@ const UI = {
       '</div>';
 
     card.querySelector('.thumbnail').addEventListener('click', function () {
-      window.open(videoUrl, '_blank');
+      Player.playNow(video);
     });
 
     card.querySelector('.btn-add-video').addEventListener('click', function (e) {
@@ -105,9 +104,8 @@ const UI = {
   renderPlaylistVideoItem(video, playlistId) {
     const item = document.createElement('div');
     item.className = 'playlist-video-item';
-    const videoUrl = 'https://www.youtube.com/watch?v=' + video.videoId;
     item.innerHTML =
-      '<div class="pv-thumbnail" data-url="' + videoUrl + '">' +
+      '<div class="pv-thumbnail">' +
         '<img src="' + (video.thumbnailUrl || '') + '" alt="" loading="lazy">' +
       '</div>' +
       '<div class="pv-info">' +
@@ -122,7 +120,7 @@ const UI = {
       '</button>';
 
     item.querySelector('.pv-thumbnail').addEventListener('click', function () {
-      window.open(videoUrl, '_blank');
+      Player.playNow(video);
     });
 
     item.querySelector('.btn-remove').addEventListener('click', function () {
