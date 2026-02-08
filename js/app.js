@@ -46,7 +46,7 @@ var App = {
     switch (viewName) {
       case 'home':
         header.style.display = 'block';
-        searchInput.placeholder = 'YouTube URL\uC744 \uBD99\uC5EC\uB123\uAC70\uB098, \uC6D0\uD558\uB294 \uC601\uC0C1\uC744 \uAC80\uC0C9\uD558\uC138\uC694';
+        searchInput.placeholder = 'YouTube URL을 붙여주세요';
         document.getElementById('view-home').classList.add('active');
         this._setActiveNav('home');
         break;
@@ -73,13 +73,13 @@ var App = {
           var profileContainer = document.querySelector('.profile-container');
           profileContainer.innerHTML =
             '<div class="empty-state">' +
-              '<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
-                '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>' +
-                '<circle cx="12" cy="7" r="4"></circle>' +
-              '</svg>' +
-              '<p>\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4</p>' +
-              '<span>\uD50C\uB808\uC774\uB9AC\uC2A4\uD2B8\uB97C \uC800\uC7A5\uD558\uB824\uBA74 \uB85C\uADF8\uC778\uD558\uC138\uC694</span>' +
-              '<button id="profile-login-btn" class="btn-primary" style="max-width:200px;margin-top:16px;">\uB85C\uADF8\uC778</button>' +
+            '<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+            '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>' +
+            '<circle cx="12" cy="7" r="4"></circle>' +
+            '</svg>' +
+            '<p>\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4</p>' +
+            '<span>\uD50C\uB808\uC774\uB9AC\uC2A4\uD2B8\uB97C \uC800\uC7A5\uD558\uB824\uBA74 \uB85C\uADF8\uC778\uD558\uC138\uC694</span>' +
+            '<button id="profile-login-btn" class="btn-primary" style="max-width:200px;margin-top:16px;">\uB85C\uADF8\uC778</button>' +
             '</div>';
           document.getElementById('profile-login-btn').addEventListener('click', function () {
             App.navigate('auth');
@@ -164,7 +164,8 @@ var App = {
         UI.showToast('Playlist created!', 'success');
         self._loadPlaylists();
       }).catch(function (err) {
-        UI.showToast('Failed to create playlist', 'error');
+        // Error message already shown by UI.showToast in playlist.js
+        console.error('Playlist creation error:', err);
       });
     });
   },

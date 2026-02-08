@@ -42,18 +42,9 @@ var Auth = {
       self.logout();
     });
 
-    var guestBtn = document.getElementById('guest-continue-btn');
-    if (guestBtn) {
-      guestBtn.addEventListener('click', function () {
-        App.navigate('home');
-      });
-    }
-    var guestBtnReg = document.getElementById('guest-continue-btn-reg');
-    if (guestBtnReg) {
-      guestBtnReg.addEventListener('click', function () {
-        App.navigate('home');
-      });
-    }
+    document.getElementById('logout-btn').addEventListener('click', function () {
+      self.logout();
+    });
   },
 
   hashPassword: function (password) {
@@ -102,6 +93,8 @@ var Auth = {
       self._updateUIForAuthState(sessionUser);
       UI.showToast('Welcome, ' + nickname + '!', 'success');
       App.navigate('home');
+    }).catch(function (err) {
+      UI.showToast('Registration failed: ' + err.message, 'error');
     });
   },
 
@@ -132,6 +125,8 @@ var Auth = {
       self._updateUIForAuthState(sessionUser);
       UI.showToast('Welcome back, ' + user.nickname + '!', 'success');
       App.navigate('home');
+    }).catch(function (err) {
+      UI.showToast('Login failed: ' + err.message, 'error');
     });
   },
 

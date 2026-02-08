@@ -11,6 +11,7 @@ var Player = {
   init: function () {
     this._injectIframeAPI();
     this._bindControls();
+    this._showMiniPlayer(); // Make it visible by default even with empty queue
   },
 
   _injectIframeAPI: function () {
@@ -129,7 +130,7 @@ var Player = {
     this._loadCurrent();
 
     var self = this;
-    setTimeout(function() {
+    setTimeout(function () {
       self._fetchRelatedVideos(video.videoId);
     }, 1000);
   },
@@ -392,7 +393,7 @@ var Player = {
             }
           });
       })
-      .catch(function () {});
+      .catch(function () { });
   },
 
   _bindControls: function () {
@@ -416,7 +417,7 @@ var Player = {
         self.next();
         return;
       }
-      btn = e.target.closest('#mp-prev');
+      btn = e.target.closest('#mp-prev, #mp-prev-mini');
       if (btn) {
         e.stopPropagation();
         self.prev();

@@ -61,6 +61,17 @@ var Search = {
     var listContainer = document.getElementById('playlist-list');
     var emptyState = document.getElementById('playlist-empty');
 
+    if (!query) {
+      PlaylistDB.getPlaylists().then(function (playlists) {
+        listContainer.innerHTML = '';
+        emptyState.style.display = playlists.length === 0 ? 'flex' : 'none';
+        playlists.forEach(function (pl) {
+          listContainer.appendChild(UI.renderPlaylistCard(pl));
+        });
+      });
+      return;
+    }
+
     PlaylistDB.getPlaylists().then(function (playlists) {
       var filtered = playlists.filter(function (pl) {
         return pl.name.toLowerCase().indexOf(query.toLowerCase()) !== -1;
@@ -69,8 +80,14 @@ var Search = {
       listContainer.innerHTML = '';
 
       if (filtered.length === 0) {
-        emptyState.querySelector('p').textContent = '\uAC80\uC0C9 \uACB0\uACFC\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4';
-        emptyState.querySelector('span').textContent = '"' + query + '"\uC5D0 \uD574\uB2F9\uD558\uB294 \uD50C\uB808\uC774\uB9AC\uC2A4\uD2B8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4';
+        if (!emptyState.originalContent) {
+          emptyState.originalContent = emptyState.innerHTML;
+        }
+        emptyState.innerHTML =
+          '<div style="text-align:center; padding: 40px 20px;">' +
+          '<p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">검색 결과가 없습니다</p>' +
+          '<span style="font-size: 14px; color: #666;">"' + UI.escapeHtml(query) + '"에 해당하는 플레이리스트가 없습니다.</span>' +
+          '</div>';
         emptyState.style.display = 'flex';
         return;
       }

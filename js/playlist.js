@@ -36,24 +36,41 @@ var PlaylistDB = {
   createPlaylist: function (name, description) {
     var self = this;
     var user = Auth.getCurrentUser();
-    var userId = user ? user.id : 'guest';
 
-    return new Promise(function (resolve, reject) {
-      var tx = self.db.transaction('playlists', 'readwrite');
-      var store = tx.objectStore('playlists');
+    if (!user) {
+      UI.showToast('회원만 가능합니다', 'error');
+      return Promise.reject(new Error('Auth required'));
+    }
 
-      var playlist = {
-        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-        userId: userId,
-        name: name,
-        description: description || '',
-        videoCount: 0,
-        createdAt: new Date().toISOString()
-      };
+    var userId = user.id;
 
-      var req = store.add(playlist);
-      req.onsuccess = function () { resolve(playlist); };
-      req.onerror = function (e) { reject(e.target.error); };
+    return this.getPlaylists().then(function (playlists) {
+      var exists = playlists.some(function (pl) {
+        return pl.name.toLowerCase() === name.toLowerCase();
+      });
+
+      if (exists) {
+        UI.showToast('이미 존재하는 플레이리스트 이름입니다', 'error');
+        return Promise.reject(new Error('Duplicate name'));
+      }
+
+      return new Promise(function (resolve, reject) {
+        var tx = self.db.transaction('playlists', 'readwrite');
+        var store = tx.objectStore('playlists');
+
+        var playlist = {
+          id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+          userId: userId,
+          name: name,
+          description: description || '',
+          videoCount: 0,
+          createdAt: new Date().toISOString()
+        };
+
+        var req = store.add(playlist);
+        req.onsuccess = function () { resolve(playlist); };
+        req.onerror = function (e) { reject(e.target.error); };
+      });
     });
   },
 
