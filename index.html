@@ -130,6 +130,7 @@
             </div>
             <button type="submit" class="btn-primary">&#xB85C;&#xADF8;&#xC778;</button>
             <p class="auth-switch">&#xACC4;&#xC815;&#xC774; &#xC5C6;&#xC73C;&#xC2E0;&#xAC00;&#xC694;? <a href="#" id="show-register">&#xD68C;&#xC6D0;&#xAC00;&#xC785;</a></p>
+            <button type="button" id="guest-continue-btn" class="btn-guest">&#xB85C;&#xADF8;&#xC778; &#xC5C6;&#xC774; &#xACC4;&#xC18D;&#xD558;&#xAE30;</button>
           </form>
 
           <!-- Register Form -->
@@ -146,6 +147,7 @@
             </div>
             <button type="submit" class="btn-primary">&#xD68C;&#xC6D0;&#xAC00;&#xC785;</button>
             <p class="auth-switch">&#xC774;&#xBBF8; &#xACC4;&#xC815;&#xC774; &#xC788;&#xC73C;&#xC2E0;&#xAC00;&#xC694;? <a href="#" id="show-login">&#xB85C;&#xADF8;&#xC778;</a></p>
+            <button type="button" id="guest-continue-btn-reg" class="btn-guest">&#xB85C;&#xADF8;&#xC778; &#xC5C6;&#xC774; &#xACC4;&#xC18D;&#xD558;&#xAE30;</button>
           </form>
         </div>
       </section>
@@ -222,34 +224,85 @@
     <!-- Hidden YouTube Player -->
     <div id="yt-player-wrap"><div id="yt-player"></div></div>
 
-    <!-- Mini Player -->
+    <!-- Music Player (Expandable) -->
     <div id="mini-player">
-      <div id="mp-progress-bar" class="mp-progress-bar">
-        <div id="mp-progress-fill" class="mp-progress-fill"></div>
+      <!-- Mini Player Bar (Visible when collapsed) -->
+      <div id="mp-bar" class="mp-bar">
+        <div id="mp-progress-bar" class="mp-progress-bar">
+          <div id="mp-progress-fill" class="mp-progress-fill"></div>
+        </div>
+        <div class="mp-content">
+          <img id="mp-thumb" class="mp-thumb" src="" alt="">
+          <div class="mp-info">
+            <div id="mp-title" class="mp-title"></div>
+            <div id="mp-channel" class="mp-channel"></div>
+          </div>
+          <div class="mp-controls">
+            <button id="mp-play-pause" class="mp-btn mp-btn-play" aria-label="Play">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            </button>
+            <button id="mp-next" class="mp-btn" aria-label="Next">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+            </button>
+          </div>
+        </div>
       </div>
-      <div class="mp-content">
-        <img id="mp-thumb" class="mp-thumb" src="" alt="">
-        <div class="mp-info">
-          <div id="mp-title" class="mp-title"></div>
-          <div id="mp-channel" class="mp-channel"></div>
-        </div>
-        <div class="mp-time">
-          <span id="mp-current-time">0:00</span> / <span id="mp-duration">0:00</span>
-        </div>
-        <div class="mp-controls">
-          <button id="mp-prev" class="mp-btn" aria-label="Previous">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+
+      <!-- Expanded Player (Visible when maximized) -->
+      <div id="mp-expanded" class="mp-expanded">
+        <header class="mp-header">
+          <button id="mp-minimize" class="mp-minimize-btn" aria-label="Minimize">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
           </button>
-          <button id="mp-play-pause" class="mp-btn mp-btn-play" aria-label="Play">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-          </button>
-          <button id="mp-next" class="mp-btn" aria-label="Next">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
-          </button>
-        </div>
-        <div class="mp-volume-wrap">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-          <input id="mp-volume" class="mp-volume-slider" type="range" min="0" max="100" value="80">
+          <div class="mp-header-title">Now Playing</div>
+          <div style="width: 40px;"></div> <!-- Spacer -->
+        </header>
+
+        <div class="mp-main">
+          <div class="mp-album-artwork">
+            <img id="mpx-thumb" src="" alt="">
+          </div>
+
+          <div class="mp-details">
+            <h2 id="mpx-title"></h2>
+            <p id="mpx-channel"></p>
+          </div>
+
+          <div class="mp-progressive-controls">
+            <div id="mpx-progress-bar" class="mpx-progress-bar">
+              <div id="mpx-progress-fill" class="mpx-progress-fill"></div>
+            </div>
+            <div class="mpx-time-info">
+              <span id="mpx-current-time">0:00</span>
+              <span id="mpx-duration">0:00</span>
+            </div>
+          </div>
+
+          <div class="mp-main-controls">
+            <button id="mp-prev" class="mp-ctrl-btn" aria-label="Previous">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+            </button>
+            <button id="mpx-play-pause" class="mp-ctrl-btn mp-play-circle" aria-label="Play">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            </button>
+            <button id="mpx-next" class="mp-ctrl-btn" aria-label="Next">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+            </button>
+          </div>
+
+          <div class="mp-additional-controls">
+            <div class="mp-volume-group">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+              <input id="mpx-volume" class="mp-volume-slider" type="range" min="0" max="100" value="80">
+            </div>
+          </div>
+
+          <div class="mp-queue-section">
+            <div class="mp-queue-header">Up Next</div>
+            <div id="mp-queue-list" class="mp-queue-list"></div>
+          </div>
         </div>
       </div>
     </div>

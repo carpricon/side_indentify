@@ -41,6 +41,19 @@ var Auth = {
     document.getElementById('logout-btn').addEventListener('click', function () {
       self.logout();
     });
+
+    var guestBtn = document.getElementById('guest-continue-btn');
+    if (guestBtn) {
+      guestBtn.addEventListener('click', function () {
+        App.navigate('home');
+      });
+    }
+    var guestBtnReg = document.getElementById('guest-continue-btn-reg');
+    if (guestBtnReg) {
+      guestBtnReg.addEventListener('click', function () {
+        App.navigate('home');
+      });
+    }
   },
 
   hashPassword: function (password) {

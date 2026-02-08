@@ -23,16 +23,13 @@ const UI = {
         '</div>' +
       '</div>';
 
-    card.querySelector('.thumbnail').addEventListener('click', function () {
+    card.addEventListener('click', function (e) {
+      if (e.target.closest('.btn-add-video')) return;
       Player.playNow(video);
     });
 
     card.querySelector('.btn-add-video').addEventListener('click', function (e) {
       e.stopPropagation();
-      if (!Auth.isLoggedIn()) {
-        UI.showToast('로그인이 필요합니다', 'error');
-        return;
-      }
       App.showAddToPlaylistModal(video);
     });
 
@@ -119,11 +116,13 @@ const UI = {
         '</svg>' +
       '</button>';
 
-    item.querySelector('.pv-thumbnail').addEventListener('click', function () {
+    item.addEventListener('click', function (e) {
+      if (e.target.closest('.btn-remove')) return;
       Player.playNow(video);
     });
 
-    item.querySelector('.btn-remove').addEventListener('click', function () {
+    item.querySelector('.btn-remove').addEventListener('click', function (e) {
+      e.stopPropagation();
       PlaylistDB.removeVideo(playlistId, video.videoId).then(function () {
         item.remove();
         UI.showToast('Removed from playlist', 'success');

@@ -36,7 +36,7 @@ var PlaylistDB = {
   createPlaylist: function (name, description) {
     var self = this;
     var user = Auth.getCurrentUser();
-    if (!user) return Promise.reject(new Error('Not logged in'));
+    var userId = user ? user.id : 'guest';
 
     return new Promise(function (resolve, reject) {
       var tx = self.db.transaction('playlists', 'readwrite');
@@ -44,7 +44,7 @@ var PlaylistDB = {
 
       var playlist = {
         id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-        userId: user.id,
+        userId: userId,
         name: name,
         description: description || '',
         videoCount: 0,
@@ -60,13 +60,13 @@ var PlaylistDB = {
   getPlaylists: function () {
     var self = this;
     var user = Auth.getCurrentUser();
-    if (!user) return Promise.resolve([]);
+    var userId = user ? user.id : 'guest';
 
     return new Promise(function (resolve, reject) {
       var tx = self.db.transaction('playlists', 'readonly');
       var store = tx.objectStore('playlists');
       var index = store.index('userId');
-      var req = index.getAll(user.id);
+      var req = index.getAll(userId);
 
       req.onsuccess = function () {
         var playlists = req.result || [];

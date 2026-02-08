@@ -41,6 +41,11 @@ var Search = {
   },
 
   handleSearch: function (query) {
+    if (App.currentView === 'playlist') {
+      this._filterPlaylists(query);
+      return;
+    }
+
     this.currentQuery = query;
     this.currentPage = 1;
     this.pageTokens = { 1: '' };
@@ -50,6 +55,31 @@ var Search = {
     } else {
       this.searchByKeyword(query, '');
     }
+  },
+
+  _filterPlaylists: function (query) {
+    var listContainer = document.getElementById('playlist-list');
+    var emptyState = document.getElementById('playlist-empty');
+
+    PlaylistDB.getPlaylists().then(function (playlists) {
+      var filtered = playlists.filter(function (pl) {
+        return pl.name.toLowerCase().indexOf(query.toLowerCase()) !== -1;
+      });
+
+      listContainer.innerHTML = '';
+
+      if (filtered.length === 0) {
+        emptyState.querySelector('p').textContent = '\uAC80\uC0C9 \uACB0\uACFC\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4';
+        emptyState.querySelector('span').textContent = '"' + query + '"\uC5D0 \uD574\uB2F9\uD558\uB294 \uD50C\uB808\uC774\uB9AC\uC2A4\uD2B8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4';
+        emptyState.style.display = 'flex';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      filtered.forEach(function (pl) {
+        listContainer.appendChild(UI.renderPlaylistCard(pl));
+      });
+    });
   },
 
   _isYouTubeUrl: function (str) {

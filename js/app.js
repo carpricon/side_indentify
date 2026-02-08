@@ -39,26 +39,26 @@ var App = {
 
     var header = document.getElementById('search-header');
     var nav = document.getElementById('bottom-nav');
+    var searchInput = document.getElementById('search-input');
 
-    if (viewName === 'auth') {
-      header.style.display = 'none';
-      nav.style.display = 'none';
-    } else {
-      header.style.display = 'block';
-      nav.style.display = 'flex';
-    }
+    nav.style.display = 'flex';
 
     switch (viewName) {
       case 'home':
+        header.style.display = 'block';
+        searchInput.placeholder = 'YouTube URL\uC744 \uBD99\uC5EC\uB123\uAC70\uB098, \uC6D0\uD558\uB294 \uC601\uC0C1\uC744 \uAC80\uC0C9\uD558\uC138\uC694';
         document.getElementById('view-home').classList.add('active');
         this._setActiveNav('home');
         break;
 
       case 'playlist':
         if (param) {
+          header.style.display = 'none';
           document.getElementById('view-playlist-detail').classList.add('active');
           this._loadPlaylistDetail(param);
         } else {
+          header.style.display = 'block';
+          searchInput.placeholder = '\uD50C\uB808\uC774\uB9AC\uC2A4\uD2B8 \uC774\uB984\uC73C\uB85C \uAC80\uC0C9';
           document.getElementById('view-playlist').classList.add('active');
           this._loadPlaylists();
         }
@@ -66,15 +66,29 @@ var App = {
         break;
 
       case 'profile':
-        if (!Auth.isLoggedIn()) {
-          this.navigate('auth');
-          return;
-        }
+        header.style.display = 'none';
         document.getElementById('view-profile').classList.add('active');
         this._setActiveNav('profile');
+        if (!Auth.isLoggedIn()) {
+          var profileContainer = document.querySelector('.profile-container');
+          profileContainer.innerHTML =
+            '<div class="empty-state">' +
+              '<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+                '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>' +
+                '<circle cx="12" cy="7" r="4"></circle>' +
+              '</svg>' +
+              '<p>\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4</p>' +
+              '<span>\uD50C\uB808\uC774\uB9AC\uC2A4\uD2B8\uB97C \uC800\uC7A5\uD558\uB824\uBA74 \uB85C\uADF8\uC778\uD558\uC138\uC694</span>' +
+              '<button id="profile-login-btn" class="btn-primary" style="max-width:200px;margin-top:16px;">\uB85C\uADF8\uC778</button>' +
+            '</div>';
+          document.getElementById('profile-login-btn').addEventListener('click', function () {
+            App.navigate('auth');
+          });
+        }
         break;
 
       case 'auth':
+        header.style.display = 'none';
         if (Auth.isLoggedIn()) {
           this.navigate('home');
           return;
@@ -83,6 +97,7 @@ var App = {
         break;
 
       default:
+        header.style.display = 'block';
         document.getElementById('view-home').classList.add('active');
         this._setActiveNav('home');
         break;
@@ -129,11 +144,6 @@ var App = {
     });
 
     document.getElementById('create-playlist-btn').addEventListener('click', function () {
-      if (!Auth.isLoggedIn()) {
-        UI.showToast('Please log in first', 'error');
-        self.navigate('auth');
-        return;
-      }
       UI.showModal('modal-create-playlist');
     });
 
@@ -163,18 +173,12 @@ var App = {
     var listContainer = document.getElementById('playlist-list');
     var emptyState = document.getElementById('playlist-empty');
 
-    if (!Auth.isLoggedIn()) {
-      listContainer.innerHTML = '';
-      emptyState.querySelector('p').textContent = 'Login required';
-      emptyState.querySelector('span').textContent = 'Please log in to view playlists';
-      emptyState.style.display = 'flex';
-      return;
-    }
-
     PlaylistDB.getPlaylists().then(function (playlists) {
       listContainer.innerHTML = '';
 
       if (playlists.length === 0) {
+        emptyState.querySelector('p').textContent = '\uD50C\uB808\uC774\uB9AC\uC2A4\uD2B8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4';
+        emptyState.querySelector('span').textContent = '\uC0C8 \uD50C\uB808\uC774\uB9AC\uC2A4\uD2B8\uB97C \uB9CC\uB4E4\uC5B4\uBCF4\uC138\uC694';
         emptyState.style.display = 'flex';
         return;
       }
@@ -238,8 +242,8 @@ var App = {
       if (playlists.length === 0) {
         container.innerHTML =
           '<div class="empty-state" style="min-height:100px;">' +
-            '<p style="font-size:14px;">No playlists yet</p>' +
-            '<span style="font-size:12px;">Create one first</span>' +
+          '<p style="font-size:14px;">No playlists yet</p>' +
+          '<span style="font-size:12px;">Create one first</span>' +
           '</div>';
       } else {
         playlists.forEach(function (pl) {
@@ -247,11 +251,11 @@ var App = {
           item.className = 'modal-playlist-item';
           item.innerHTML =
             '<div class="mpi-icon">' +
-              '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
-                '<path d="M9 18V5l12-2v13"></path>' +
-                '<circle cx="6" cy="18" r="3"></circle>' +
-                '<circle cx="18" cy="16" r="3"></circle>' +
-              '</svg>' +
+            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+            '<path d="M9 18V5l12-2v13"></path>' +
+            '<circle cx="6" cy="18" r="3"></circle>' +
+            '<circle cx="18" cy="16" r="3"></circle>' +
+            '</svg>' +
             '</div>' +
             '<span class="mpi-name">' + UI.escapeHtml(pl.name) + '</span>';
 
