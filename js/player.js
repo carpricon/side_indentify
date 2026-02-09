@@ -11,7 +11,8 @@ var Player = {
   init: function () {
     this._injectIframeAPI();
     this._bindControls();
-    this._showMiniPlayer(); // Make it visible by default even with empty queue
+    this._bindSwipeGesture();
+    this._showMiniPlayer();
   },
 
   _injectIframeAPI: function () {
@@ -72,15 +73,18 @@ var Player = {
         this._updatePlayPauseIcon(true);
         this._startProgress();
         this._updateDuration();
+        this._updateMediaSessionPlaybackState('playing');
         break;
       case YT.PlayerState.PAUSED:
         this.isPlaying = false;
         this._updatePlayPauseIcon(false);
         this._stopProgress();
+        this._updateMediaSessionPlaybackState('paused');
         break;
       case YT.PlayerState.ENDED:
         this.isPlaying = false;
         this._stopProgress();
+        this._updateMediaSessionPlaybackState('none');
         this.next();
         break;
       case YT.PlayerState.BUFFERING:
@@ -199,6 +203,7 @@ var Player = {
     var video = this.queue[this.currentIndex];
     if (!video) return;
     this._updatePlayerUI(video);
+    this._updateMediaSession(video);
     this._showMiniPlayer();
     this._renderQueue();
 
@@ -307,6 +312,43 @@ var Player = {
     if (xslider) xslider.value = val;
   },
 
+  _updateMediaSession: function (video) {
+    if (!('mediaSession' in navigator)) return;
+    var self = this;
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: video.title || '',
+      artist: video.channelTitle || '',
+      album: 'Indentify',
+      artwork: [
+        { src: video.thumbnailUrl || '', sizes: '320x180', type: 'image/jpeg' }
+      ]
+    });
+
+    navigator.mediaSession.setActionHandler('play', function () {
+      self.togglePlayPause();
+    });
+    navigator.mediaSession.setActionHandler('pause', function () {
+      self.togglePlayPause();
+    });
+    navigator.mediaSession.setActionHandler('previoustrack', function () {
+      self.prev();
+    });
+    navigator.mediaSession.setActionHandler('nexttrack', function () {
+      self.next();
+    });
+    navigator.mediaSession.setActionHandler('seekto', function (details) {
+      if (details.seekTime != null && self.isReady) {
+        self.ytPlayer.seekTo(details.seekTime, true);
+      }
+    });
+  },
+
+  _updateMediaSessionPlaybackState: function (state) {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.playbackState = state;
+  },
+
   _renderQueue: function () {
     var container = document.getElementById('mp-queue-list');
     if (!container) return;
@@ -396,6 +438,61 @@ var Player = {
       .catch(function () { });
   },
 
+  _bindSwipeGesture: function () {
+    var self = this;
+    var expandedEl = document.getElementById('mp-expanded');
+    if (!expandedEl) return;
+
+    var startY = 0;
+    var currentY = 0;
+    var isDragging = false;
+    var playerEl = document.getElementById('mini-player');
+
+    expandedEl.addEventListener('touchstart', function (e) {
+      if (!self.isExpanded) return;
+      // Don't capture swipe on interactive elements
+      if (e.target.closest('.mp-main-controls, .mp-volume-group, .mpx-progress-bar, .mp-queue-list, .mp-add-playlist-btn')) return;
+      startY = e.touches[0].clientY;
+      currentY = startY;
+      isDragging = true;
+      playerEl.style.transition = 'none';
+    }, { passive: true });
+
+    expandedEl.addEventListener('touchmove', function (e) {
+      if (!isDragging || !self.isExpanded) return;
+      currentY = e.touches[0].clientY;
+      var deltaY = currentY - startY;
+      if (deltaY > 0) {
+        // Only allow downward drag
+        var translateY = Math.min(deltaY, window.innerHeight);
+        var opacity = 1 - (deltaY / window.innerHeight) * 0.5;
+        expandedEl.style.transform = 'translateY(' + translateY + 'px)';
+        expandedEl.style.opacity = Math.max(opacity, 0.5);
+      }
+    }, { passive: true });
+
+    expandedEl.addEventListener('touchend', function () {
+      if (!isDragging) return;
+      isDragging = false;
+      var deltaY = currentY - startY;
+      playerEl.style.transition = '';
+      expandedEl.style.transform = '';
+      expandedEl.style.opacity = '';
+
+      // If swiped down more than 100px or fast enough, minimize
+      if (deltaY > 100) {
+        self.minimize();
+      }
+    }, { passive: true });
+
+    expandedEl.addEventListener('touchcancel', function () {
+      isDragging = false;
+      playerEl.style.transition = '';
+      expandedEl.style.transform = '';
+      expandedEl.style.opacity = '';
+    }, { passive: true });
+  },
+
   _bindControls: function () {
     var self = this;
 
@@ -429,6 +526,21 @@ var Player = {
       if (btn) {
         e.stopPropagation();
         self.minimize();
+        return;
+      }
+
+      // Add to Playlist from expanded player
+      btn = e.target.closest('#mpx-add-to-playlist');
+      if (btn) {
+        e.stopPropagation();
+        var currentVideo = self.queue[self.currentIndex];
+        if (currentVideo) {
+          if (!Auth.isLoggedIn()) {
+            UI.showToast('로그인이 필요합니다', 'error');
+            return;
+          }
+          App.showAddToPlaylistModal(currentVideo);
+        }
         return;
       }
 

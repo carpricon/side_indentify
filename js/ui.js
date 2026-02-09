@@ -26,6 +26,7 @@ const UI = {
     card.addEventListener('click', function (e) {
       if (e.target.closest('.btn-add-video')) return;
       Player.playNow(video);
+      Player.maximize();
     });
 
     card.querySelector('.btn-add-video').addEventListener('click', function (e) {
@@ -119,6 +120,7 @@ const UI = {
     item.addEventListener('click', function (e) {
       if (e.target.closest('.btn-remove')) return;
       Player.playNow(video);
+      Player.maximize();
     });
 
     item.querySelector('.btn-remove').addEventListener('click', function (e) {

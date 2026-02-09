@@ -41,10 +41,6 @@ var Auth = {
     document.getElementById('logout-btn').addEventListener('click', function () {
       self.logout();
     });
-
-    document.getElementById('logout-btn').addEventListener('click', function () {
-      self.logout();
-    });
   },
 
   hashPassword: function (password) {
@@ -60,19 +56,30 @@ var Auth = {
     var self = this;
 
     if (!email || !password || !nickname) {
-      UI.showToast('All fields are required', 'error');
+      UI.showToast('모든 필드를 입력해주세요', 'error');
+      return;
+    }
+
+    var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      UI.showToast('올바른 이메일 형식을 입력해주세요', 'error');
       return;
     }
 
     if (password.length < 6) {
-      UI.showToast('Password must be at least 6 characters', 'error');
+      UI.showToast('비밀번호는 6자 이상이어야 합니다', 'error');
+      return;
+    }
+
+    if (nickname.length < 2) {
+      UI.showToast('닉네임은 2자 이상이어야 합니다', 'error');
       return;
     }
 
     var users = this._getUsers();
     var exists = users.some(function (u) { return u.email === email; });
     if (exists) {
-      UI.showToast('Email already registered', 'error');
+      UI.showToast('이미 가입된 이메일입니다', 'error');
       return;
     }
 
@@ -88,13 +95,13 @@ var Auth = {
       localStorage.setItem(self.USERS_KEY, JSON.stringify(users));
 
       var sessionUser = { id: user.id, email: user.email, nickname: user.nickname };
-      sessionStorage.setItem(self.SESSION_KEY, JSON.stringify(sessionUser));
+      localStorage.setItem(self.SESSION_KEY, JSON.stringify(sessionUser));
 
       self._updateUIForAuthState(sessionUser);
-      UI.showToast('Welcome, ' + nickname + '!', 'success');
+      UI.showToast(nickname + '님 환영합니다!', 'success');
       App.navigate('home');
     }).catch(function (err) {
-      UI.showToast('Registration failed: ' + err.message, 'error');
+      UI.showToast('회원가입에 실패했습니다', 'error');
     });
   },
 
@@ -102,44 +109,44 @@ var Auth = {
     var self = this;
 
     if (!email || !password) {
-      UI.showToast('Please enter email and password', 'error');
+      UI.showToast('이메일과 비밀번호를 입력해주세요', 'error');
       return;
     }
 
     var users = this._getUsers();
     var user = users.find(function (u) { return u.email === email; });
     if (!user) {
-      UI.showToast('Invalid email or password', 'error');
+      UI.showToast('이메일 또는 비밀번호가 올바르지 않습니다', 'error');
       return;
     }
 
     this.hashPassword(password).then(function (hash) {
       if (hash !== user.passwordHash) {
-        UI.showToast('Invalid email or password', 'error');
+        UI.showToast('이메일 또는 비밀번호가 올바르지 않습니다', 'error');
         return;
       }
 
       var sessionUser = { id: user.id, email: user.email, nickname: user.nickname };
-      sessionStorage.setItem(self.SESSION_KEY, JSON.stringify(sessionUser));
+      localStorage.setItem(self.SESSION_KEY, JSON.stringify(sessionUser));
 
       self._updateUIForAuthState(sessionUser);
-      UI.showToast('Welcome back, ' + user.nickname + '!', 'success');
+      UI.showToast(user.nickname + '님 돌아오셨군요!', 'success');
       App.navigate('home');
     }).catch(function (err) {
-      UI.showToast('Login failed: ' + err.message, 'error');
+      UI.showToast('로그인에 실패했습니다', 'error');
     });
   },
 
   logout: function () {
-    sessionStorage.removeItem(this.SESSION_KEY);
+    localStorage.removeItem(this.SESSION_KEY);
     this._updateUIForAuthState(null);
     App.navigate('home');
-    UI.showToast('Logged out', 'info');
+    UI.showToast('로그아웃 되었습니다', 'info');
   },
 
   getCurrentUser: function () {
     try {
-      var data = sessionStorage.getItem(this.SESSION_KEY);
+      var data = localStorage.getItem(this.SESSION_KEY);
       return data ? JSON.parse(data) : null;
     } catch (e) {
       return null;
@@ -163,12 +170,14 @@ var Auth = {
     var profileNickname = document.getElementById('profile-nickname');
     var profileEmail = document.getElementById('profile-email');
 
-    if (user) {
-      profileNickname.textContent = user.nickname;
-      profileEmail.textContent = user.email;
-    } else {
-      profileNickname.textContent = '';
-      profileEmail.textContent = '';
+    if (profileNickname && profileEmail) {
+      if (user) {
+        profileNickname.textContent = user.nickname;
+        profileEmail.textContent = user.email;
+      } else {
+        profileNickname.textContent = '';
+        profileEmail.textContent = '';
+      }
     }
   }
 };

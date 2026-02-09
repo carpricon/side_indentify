@@ -69,22 +69,7 @@ var App = {
         header.style.display = 'none';
         document.getElementById('view-profile').classList.add('active');
         this._setActiveNav('profile');
-        if (!Auth.isLoggedIn()) {
-          var profileContainer = document.querySelector('.profile-container');
-          profileContainer.innerHTML =
-            '<div class="empty-state">' +
-            '<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
-            '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>' +
-            '<circle cx="12" cy="7" r="4"></circle>' +
-            '</svg>' +
-            '<p>\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4</p>' +
-            '<span>\uD50C\uB808\uC774\uB9AC\uC2A4\uD2B8\uB97C \uC800\uC7A5\uD558\uB824\uBA74 \uB85C\uADF8\uC778\uD558\uC138\uC694</span>' +
-            '<button id="profile-login-btn" class="btn-primary" style="max-width:200px;margin-top:16px;">\uB85C\uADF8\uC778</button>' +
-            '</div>';
-          document.getElementById('profile-login-btn').addEventListener('click', function () {
-            App.navigate('auth');
-          });
-        }
+        this._renderProfileView();
         break;
 
       case 'auth':
@@ -144,6 +129,10 @@ var App = {
     });
 
     document.getElementById('create-playlist-btn').addEventListener('click', function () {
+      if (!Auth.isLoggedIn()) {
+        UI.showToast('로그인이 필요합니다', 'error');
+        return;
+      }
       UI.showModal('modal-create-playlist');
     });
 
@@ -173,6 +162,9 @@ var App = {
   _loadPlaylists: function () {
     var listContainer = document.getElementById('playlist-list');
     var emptyState = document.getElementById('playlist-empty');
+
+    listContainer.innerHTML = '';
+    emptyState.style.display = 'none';
 
     PlaylistDB.getPlaylists().then(function (playlists) {
       listContainer.innerHTML = '';
@@ -228,12 +220,57 @@ var App = {
     });
   },
 
+  _renderProfileView: function () {
+    var profileSection = document.getElementById('view-profile');
+    var user = Auth.getCurrentUser();
+
+    if (!user) {
+      profileSection.innerHTML =
+        '<div class="profile-container">' +
+        '<div class="empty-state">' +
+        '<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>' +
+        '<circle cx="12" cy="7" r="4"></circle>' +
+        '</svg>' +
+        '<p>\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4</p>' +
+        '<span>\uD50C\uB808\uC774\uB9AC\uC2A4\uD2B8\uB97C \uC800\uC7A5\uD558\uB824\uBA74 \uB85C\uADF8\uC778\uD558\uC138\uC694</span>' +
+        '<button id="profile-login-btn" class="btn-primary" style="max-width:200px;margin-top:16px;">\uB85C\uADF8\uC778</button>' +
+        '</div>' +
+        '</div>';
+      document.getElementById('profile-login-btn').addEventListener('click', function () {
+        App.navigate('auth');
+      });
+    } else {
+      profileSection.innerHTML =
+        '<div class="profile-container">' +
+        '<div class="profile-avatar">' +
+        '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#808080" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>' +
+        '<circle cx="12" cy="7" r="4"></circle>' +
+        '</svg>' +
+        '</div>' +
+        '<h2 class="profile-nickname">' + UI.escapeHtml(user.nickname) + '</h2>' +
+        '<p class="profile-email">' + UI.escapeHtml(user.email) + '</p>' +
+        '<button id="logout-btn" class="btn-logout">\uB85C\uADF8\uC544\uC6C3</button>' +
+        '</div>';
+      document.getElementById('logout-btn').addEventListener('click', function () {
+        Auth.logout();
+      });
+    }
+  },
+
   refreshPlaylistDetail: function (playlistId) {
     this._loadPlaylistDetail(playlistId);
   },
 
   showAddToPlaylistModal: function (video) {
     var self = this;
+
+    if (!Auth.isLoggedIn()) {
+      UI.showToast('로그인이 필요합니다', 'error');
+      return;
+    }
+
     this.pendingVideo = video;
 
     PlaylistDB.getPlaylists().then(function (playlists) {
@@ -261,6 +298,10 @@ var App = {
             '<span class="mpi-name">' + UI.escapeHtml(pl.name) + '</span>';
 
           item.addEventListener('click', function () {
+            if (item.classList.contains('disabled')) return;
+            item.classList.add('disabled');
+            item.style.opacity = '0.5';
+            item.style.pointerEvents = 'none';
             self._addVideoToPlaylist(pl.id);
           });
 
@@ -272,19 +313,25 @@ var App = {
     });
   },
 
+  _isAddingVideo: false,
+
   _addVideoToPlaylist: function (playlistId) {
     var self = this;
-    if (!this.pendingVideo) return;
+    if (!this.pendingVideo || this._isAddingVideo) return;
+
+    this._isAddingVideo = true;
 
     PlaylistDB.addVideo(playlistId, this.pendingVideo).then(function () {
       UI.hideModal('modal-add-to-playlist');
-      UI.showToast('Added to playlist!', 'success');
+      UI.showToast('플레이리스트에 추가되었습니다!', 'success');
       self.pendingVideo = null;
+      self._isAddingVideo = false;
     }).catch(function (err) {
+      self._isAddingVideo = false;
       if (err.message === 'Video already in playlist') {
-        UI.showToast('Already in this playlist', 'error');
+        UI.showToast('이미 플레이리스트에 있는 곡입니다', 'error');
       } else {
-        UI.showToast('Failed to add video', 'error');
+        UI.showToast('추가에 실패했습니다', 'error');
       }
     });
   }
