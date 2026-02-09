@@ -9,6 +9,7 @@ var App = {
       Auth.init();
       Search.init();
       Player.init();
+      self._trimLogoImages();
       self._bindNavigation();
       self._bindModals();
 
@@ -21,6 +22,79 @@ var App = {
     window.addEventListener('hashchange', function () {
       var hash = window.location.hash.replace('#', '') || 'home';
       self.navigate(hash);
+    });
+  },
+
+  _trimLogoImages: function () {
+    // Visually trim transparent margins from logo images at runtime.
+    // (Keeps repo dependency-free even without imagemagick.)
+    var selectors = ['img.logo-img', 'img.auth-logo-img'];
+    var imgs = [];
+    selectors.forEach(function (sel) {
+      document.querySelectorAll(sel).forEach(function (el) { imgs.push(el); });
+    });
+
+    imgs.forEach(function (imgEl) {
+      if (!imgEl || imgEl.getAttribute('data-trimmed') === '1') return;
+      var src = imgEl.getAttribute('src');
+      if (!src) return;
+
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var w = img.width;
+          var h = img.height;
+          if (!w || !h) return;
+
+          var canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+
+          var imageData = ctx.getImageData(0, 0, w, h);
+          var data = imageData.data;
+
+          var minX = w, minY = h, maxX = 0, maxY = 0;
+          var found = false;
+
+          for (var y = 0; y < h; y++) {
+            for (var x = 0; x < w; x++) {
+              var idx = (y * w + x) * 4;
+              var alpha = data[idx + 3];
+              if (alpha > 0) {
+                found = true;
+                if (x < minX) minX = x;
+                if (y < minY) minY = y;
+                if (x > maxX) maxX = x;
+                if (y > maxY) maxY = y;
+              }
+            }
+          }
+
+          if (!found) return;
+          var cropW = maxX - minX + 1;
+          var cropH = maxY - minY + 1;
+
+          // If crop is basically the whole image, skip.
+          if (cropW >= w - 2 && cropH >= h - 2) {
+            imgEl.setAttribute('data-trimmed', '1');
+            return;
+          }
+
+          var out = document.createElement('canvas');
+          out.width = cropW;
+          out.height = cropH;
+          var octx = out.getContext('2d');
+          octx.drawImage(canvas, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
+
+          imgEl.src = out.toDataURL('image/png');
+          imgEl.setAttribute('data-trimmed', '1');
+        } catch (e) {
+          // If canvas is unsupported for any reason, fail silently.
+        }
+      };
+      img.src = src;
     });
   },
 
@@ -57,8 +131,8 @@ var App = {
           document.getElementById('view-playlist-detail').classList.add('active');
           this._loadPlaylistDetail(param);
         } else {
-          header.style.display = 'block';
-          searchInput.placeholder = '\uD50C\uB808\uC774\uB9AC\uC2A4\uD2B8 \uC774\uB984\uC73C\uB85C \uAC80\uC0C9';
+          // Search is only available on Home
+          header.style.display = 'none';
           document.getElementById('view-playlist').classList.add('active');
           this._loadPlaylists();
         }
@@ -104,6 +178,10 @@ var App = {
     document.querySelectorAll('.nav-item').forEach(function (item) {
       item.addEventListener('click', function () {
         var route = item.getAttribute('data-route');
+        // If player is expanded, minimize before navigation
+        if (window.Player && Player.isExpanded) {
+          Player.minimize();
+        }
         self.navigate(route);
       });
     });
@@ -189,6 +267,10 @@ var App = {
     var videosContainer = document.getElementById('playlist-detail-videos');
     var emptyState = document.getElementById('playlist-detail-empty');
 
+     // Prevent async race conditions from rendering duplicated headers/items
+     this._playlistDetailRequestId = (this._playlistDetailRequestId || 0) + 1;
+     var requestId = this._playlistDetailRequestId;
+
     headerContainer.innerHTML = '';
     videosContainer.innerHTML = '';
 
@@ -196,6 +278,7 @@ var App = {
       PlaylistDB.getPlaylist(playlistId),
       PlaylistDB.getPlaylistVideos(playlistId)
     ]).then(function (results) {
+      if (requestId !== self._playlistDetailRequestId) return;
       var playlist = results[0];
       var videos = results[1];
 

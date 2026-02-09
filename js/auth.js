@@ -38,8 +38,79 @@ var Auth = {
       document.getElementById('login-form').style.display = 'block';
     });
 
+    var forgotLink = document.getElementById('show-forgot-password');
+    if (forgotLink) {
+      forgotLink.addEventListener('click', function (e) {
+        e.preventDefault();
+        UI.showModal('modal-forgot-password');
+      });
+    }
+
+    var forgotForm = document.getElementById('forgot-password-form');
+    if (forgotForm) {
+      forgotForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var nickname = document.getElementById('forgot-nickname').value.trim();
+        var email = document.getElementById('forgot-email').value.trim();
+        var newPassword = document.getElementById('forgot-new-password').value;
+        self.resetPassword(nickname, email, newPassword);
+      });
+    }
+
     document.getElementById('logout-btn').addEventListener('click', function () {
       self.logout();
+    });
+  },
+
+  resetPassword: function (nickname, email, newPassword) {
+    var self = this;
+
+    if (!nickname || !email || !newPassword) {
+      UI.showToast('모든 필드를 입력해주세요', 'error');
+      return;
+    }
+
+    var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      UI.showToast('올바른 이메일 형식을 입력해주세요', 'error');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      UI.showToast('비밀번호는 6자 이상이어야 합니다', 'error');
+      return;
+    }
+
+    var users = this._getUsers();
+    var idx = -1;
+    for (var i = 0; i < users.length; i++) {
+      if (users[i].email === email && users[i].nickname === nickname) {
+        idx = i;
+        break;
+      }
+    }
+
+    if (idx === -1) {
+      UI.showToast('닉네임 또는 이메일이 올바르지 않습니다', 'error');
+      return;
+    }
+
+    this.hashPassword(newPassword).then(function (hash) {
+      users[idx].passwordHash = hash;
+      localStorage.setItem(self.USERS_KEY, JSON.stringify(users));
+
+      // Clear sensitive inputs
+      var n = document.getElementById('forgot-nickname');
+      var e = document.getElementById('forgot-email');
+      var p = document.getElementById('forgot-new-password');
+      if (n) n.value = '';
+      if (e) e.value = '';
+      if (p) p.value = '';
+
+      UI.hideModal('modal-forgot-password');
+      UI.showToast('비밀번호가 재설정되었습니다. 새 비밀번호로 로그인해주세요.', 'success');
+    }).catch(function () {
+      UI.showToast('비밀번호 재설정에 실패했습니다', 'error');
     });
   },
 

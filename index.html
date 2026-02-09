@@ -140,6 +140,7 @@
                 autocomplete="current-password">
             </div>
             <button type="submit" class="btn-primary">로그인</button>
+            <p class="auth-forgot"><a href="#" id="show-forgot-password">비밀번호를 잊으셨나요?</a></p>
             <p class="auth-switch">계정이 없으신가요? <a href="#" id="show-register">회원가입</a></p>
           </form>
 
@@ -235,6 +236,37 @@
               <textarea id="playlist-desc-input" placeholder="&#xC124;&#xBA85; (&#xC120;&#xD0DD;)" rows="3"></textarea>
             </div>
             <button type="submit" class="btn-primary">&#xB9CC;&#xB4E4;&#xAE30;</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Forgot Password Modal -->
+    <div id="modal-forgot-password" class="modal-overlay" style="display:none;">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>비밀번호 재설정</h3>
+          <button class="modal-close" data-modal="modal-forgot-password" aria-label="Close">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="forgot-password-form">
+            <div class="input-group">
+              <input type="text" id="forgot-nickname" placeholder="닉네임" required autocomplete="nickname">
+            </div>
+            <div class="input-group">
+              <input type="email" id="forgot-email" placeholder="이메일" required autocomplete="email">
+            </div>
+            <div class="input-group">
+              <input type="password" id="forgot-new-password" placeholder="새 비밀번호 (6자 이상)" required minlength="6"
+                autocomplete="new-password">
+            </div>
+            <button type="submit" class="btn-primary">재설정</button>
           </form>
         </div>
       </div>

@@ -12,7 +12,6 @@ var Player = {
     this._injectIframeAPI();
     this._bindControls();
     this._bindSwipeGesture();
-    this._showMiniPlayer();
   },
 
   _injectIframeAPI: function () {
@@ -358,84 +357,330 @@ var Player = {
     this.queue.forEach(function (video, idx) {
       var item = document.createElement('div');
       item.className = 'queue-item' + (idx === self.currentIndex ? ' active' : '');
+      item.setAttribute('draggable', 'true');
+      item.setAttribute('data-queue-index', String(idx));
       item.innerHTML =
+        '<div class="queue-reorder-handle" aria-label="Reorder">' +
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+            '<line x1="4" y1="7" x2="20" y2="7"></line>' +
+            '<line x1="4" y1="12" x2="20" y2="12"></line>' +
+            '<line x1="4" y1="17" x2="20" y2="17"></line>' +
+          '</svg>' +
+        '</div>' +
         '<img class="queue-thumb" src="' + video.thumbnailUrl + '" alt="">' +
         '<div class="queue-info">' +
-        '<div class="queue-title">' + UI.escapeHtml(video.title) + '</div>' +
-        '<div class="queue-channel">' + UI.escapeHtml(video.channelTitle) + '</div>' +
-        (video.isAutoRecommended ? '<div class="queue-badge">\uCD94\uCC9C</div>' : '') +
+          '<div class="queue-title">' + UI.escapeHtml(video.title) + '</div>' +
+          '<div class="queue-channel">' + UI.escapeHtml(video.channelTitle) + '</div>' +
+        '</div>' +
+        '<div class="queue-actions">' +
+          '<button class="queue-move-up" aria-label="Move up">' +
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+              '<polyline points="18 15 12 9 6 15"></polyline>' +
+            '</svg>' +
+          '</button>' +
+          '<button class="queue-move-down" aria-label="Move down">' +
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+              '<polyline points="6 9 12 15 18 9"></polyline>' +
+            '</svg>' +
+          '</button>' +
         '</div>';
 
+      // Tap to play
       item.addEventListener('click', function () {
         self.currentIndex = idx;
         self._loadCurrent();
+      });
+
+      // Move up/down
+      var upBtn = item.querySelector('.queue-move-up');
+      if (upBtn) {
+        upBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          self._moveQueueItem(idx, Math.max(0, idx - 1));
+        });
+      }
+      var downBtn = item.querySelector('.queue-move-down');
+      if (downBtn) {
+        downBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          self._moveQueueItem(idx, Math.min(self.queue.length - 1, idx + 1));
+        });
+      }
+
+      // Drag & drop (desktop)
+      item.addEventListener('dragstart', function (e) {
+        try {
+          e.dataTransfer.setData('text/plain', String(idx));
+          e.dataTransfer.effectAllowed = 'move';
+        } catch (_) { }
+      });
+      item.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        try { e.dataTransfer.dropEffect = 'move'; } catch (_) { }
+      });
+      item.addEventListener('drop', function (e) {
+        e.preventDefault();
+        var from = -1;
+        try { from = parseInt(e.dataTransfer.getData('text/plain'), 10); } catch (_) { }
+        if (isNaN(from) || from < 0) return;
+        self._moveQueueItem(from, idx);
       });
       container.appendChild(item);
     });
   },
 
+  _moveQueueItem: function (fromIndex, toIndex) {
+    if (fromIndex === toIndex) return;
+    if (fromIndex < 0 || toIndex < 0) return;
+    if (fromIndex >= this.queue.length || toIndex >= this.queue.length) return;
+
+    var item = this.queue.splice(fromIndex, 1)[0];
+    this.queue.splice(toIndex, 0, item);
+
+    // Keep currentIndex pointing at the same playing item
+    if (this.currentIndex === fromIndex) {
+      this.currentIndex = toIndex;
+    } else if (fromIndex < this.currentIndex && toIndex >= this.currentIndex) {
+      this.currentIndex -= 1;
+    } else if (fromIndex > this.currentIndex && toIndex <= this.currentIndex) {
+      this.currentIndex += 1;
+    }
+
+    this._renderQueue();
+  },
+
   _fetchRelatedVideos: function (videoId) {
     var self = this;
     if (!CONFIG.YOUTUBE_API_KEY) return;
+    if (this._relatedFetchInFlight) return;
 
     var currentVideo = this.queue[this.currentIndex];
     if (!currentVideo) return;
 
-    var searchQuery = currentVideo.channelTitle + ' ' + currentVideo.title.split('(')[0].split('[')[0].trim();
-    if (searchQuery.length > 50) searchQuery = searchQuery.substring(0, 50);
+    this._relatedFetchInFlight = true;
 
-    var apiUrl = CONFIG.YOUTUBE_API_BASE + '/search?part=snippet&type=video&maxResults=20' +
-      '&q=' + encodeURIComponent(searchQuery) +
+    function normalizeTitle(title) {
+      if (!title) return '';
+      var t = String(title).toLowerCase();
+
+      // Remove bracketed/parenthesized segments
+      t = t.replace(/\([^)]*\)/g, ' ');
+      t = t.replace(/\[[^\]]*\]/g, ' ');
+
+      // Remove common noise words
+      t = t
+        .replace(/\b(official|mv|m\/v|music video|lyrics?|audio|live|performance|cover|reaction|remix|teaser|trailer)\b/g, ' ')
+        .replace(/\b(feat\.?|ft\.?|featuring)\b/g, ' ');
+
+      // Collapse punctuation/whitespace
+      t = t.replace(/[^a-z0-9\u3131-\u318e\uac00-\ud7a3\s]/g, ' ');
+      t = t.replace(/\s+/g, ' ').trim();
+      return t;
+    }
+
+    function shuffle(arr) {
+      for (var i = arr.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = tmp;
+      }
+      return arr;
+    }
+
+    function inferGenreQuery(video) {
+      var title = (video && video.title) ? String(video.title).toLowerCase() : '';
+      var candidates = [
+        { re: /lofi|lo-fi/, q: 'lofi mix' },
+        { re: /jazz/, q: 'jazz mix' },
+        { re: /acoustic/, q: 'acoustic mix' },
+        { re: /rock/, q: 'rock mix' },
+        { re: /edm|house|techno/, q: 'edm mix' },
+        { re: /hip\s?hop|rap/, q: 'hip hop mix' },
+        { re: /r\s?&\s?b|rnb/, q: 'rnb mix' },
+        { re: /k-?pop|케이팝/, q: 'kpop mix' },
+        { re: /j-?pop/, q: 'jpop mix' }
+      ];
+
+      for (var i = 0; i < candidates.length; i++) {
+        if (candidates[i].re.test(title)) return candidates[i].q;
+      }
+
+      // Fallback: broad but music-oriented
+      return 'music mix';
+    }
+
+    function isShorts(video) {
+      if (!video) return false;
+      var title = (video.title || '').toLowerCase();
+      if (title.indexOf('#shorts') !== -1) return true;
+      if (/(^|\s)shorts($|\s)/i.test(title)) return true;
+      if (video.duration) {
+        var sec = UI.parseDurationToSeconds(video.duration);
+        if (sec > 0 && sec < 61) return true;
+      }
+      return false;
+    }
+
+    var currentNorm = normalizeTitle(currentVideo.title);
+    var existingIds = this.queue.map(function (v) { return v.videoId; });
+    var maxToAdd = 20;
+
+    var relatedUrl = CONFIG.YOUTUBE_API_BASE + '/search?part=snippet&type=video&maxResults=25' +
+      '&relatedToVideoId=' + encodeURIComponent(videoId) +
       '&videoCategoryId=10' +
       '&key=' + CONFIG.YOUTUBE_API_KEY;
 
-    fetch(apiUrl)
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        if (!data.items || data.items.length === 0) return;
+    var genreQuery = inferGenreQuery(currentVideo);
+    var genreUrl = CONFIG.YOUTUBE_API_BASE + '/search?part=snippet&type=video&maxResults=25' +
+      '&q=' + encodeURIComponent(genreQuery) +
+      '&videoCategoryId=10' +
+      '&key=' + CONFIG.YOUTUBE_API_KEY;
 
-        var videoIds = data.items.map(function (item) {
-          return item.id.videoId;
-        }).filter(Boolean).join(',');
+    Promise.all([
+      fetch(relatedUrl).then(function (r) { return r.json(); }).catch(function () { return {}; }),
+      fetch(genreUrl).then(function (r) { return r.json(); }).catch(function () { return {}; })
+    ])
+      .then(function (results) {
+        var relatedData = results[0] || {};
+        var genreData = results[1] || {};
 
-        if (!videoIds) return;
+        function filterSearchItems(items) {
+          items = items || [];
+          return items.filter(function (item) {
+            var live = item && item.snippet && item.snippet.liveBroadcastContent;
+            var vid = item && item.id && item.id.videoId;
+            return !!vid && live !== 'live' && live !== 'upcoming';
+          });
+        }
 
-        return fetch(CONFIG.YOUTUBE_API_BASE + '/videos?part=snippet,contentDetails&id=' + videoIds + '&key=' + CONFIG.YOUTUBE_API_KEY)
+        var relatedItems = filterSearchItems(relatedData.items);
+        var genreItems = filterSearchItems(genreData.items);
+
+        // Build a de-duped id list and keep source info for 50/50 mixing
+        var sourceById = {};
+        var ids = [];
+
+        relatedItems.forEach(function (item) {
+          var id = item.id.videoId;
+          if (!sourceById[id]) {
+            sourceById[id] = 'artist';
+            ids.push(id);
+          }
+        });
+
+        genreItems.forEach(function (item) {
+          var id = item.id.videoId;
+          if (!sourceById[id]) {
+            sourceById[id] = 'genre';
+            ids.push(id);
+          }
+        });
+
+        // Limit ids to keep the /videos call small
+        ids = ids.slice(0, 50);
+        if (ids.length === 0) return [];
+
+        return fetch(CONFIG.YOUTUBE_API_BASE + '/videos?part=snippet,contentDetails&id=' + ids.join(',') + '&key=' + CONFIG.YOUTUBE_API_KEY)
           .then(function (r) { return r.json(); })
           .then(function (detailData) {
-            if (!detailData.items) return;
-
-            var existingIds = self.queue.map(function (v) { return v.videoId; });
-            var newVideos = detailData.items
-              .filter(function (item) {
-                var id = typeof item.id === 'string' ? item.id : item.id.videoId;
-                return existingIds.indexOf(id) === -1;
-              })
-              .map(function (item) {
-                var snippet = item.snippet;
-                var thumbnail = snippet.thumbnails.medium ? snippet.thumbnails.medium.url : snippet.thumbnails.default.url;
-                return {
-                  videoId: typeof item.id === 'string' ? item.id : item.id.videoId,
-                  title: snippet.title,
-                  channelTitle: snippet.channelTitle,
-                  thumbnailUrl: thumbnail,
-                  duration: item.contentDetails ? item.contentDetails.duration : '',
-                  isAutoRecommended: true
-                };
-              });
-
-            var added = 0;
-            for (var i = 0; i < newVideos.length && added < 20; i++) {
-              self.queue.push(newVideos[i]);
-              added++;
-            }
-
-            if (added > 0) {
-              self._renderQueue();
-            }
+            var items = (detailData && detailData.items) ? detailData.items : [];
+            return items.map(function (item) {
+              var snippet = item.snippet || {};
+              var thumbnail = snippet.thumbnails && snippet.thumbnails.medium ? snippet.thumbnails.medium.url : (snippet.thumbnails && snippet.thumbnails.default ? snippet.thumbnails.default.url : '');
+              var id = typeof item.id === 'string' ? item.id : item.id.videoId;
+              return {
+                videoId: id,
+                title: snippet.title,
+                channelTitle: snippet.channelTitle,
+                thumbnailUrl: thumbnail,
+                duration: item.contentDetails ? item.contentDetails.duration : '',
+                isAutoRecommended: true,
+                _source: sourceById[id] || 'genre'
+              };
+            });
           });
       })
-      .catch(function () { });
+      .then(function (candidates) {
+        candidates = candidates || [];
+
+        // Dedup + exclude same-song variants + exclude shorts
+        candidates = candidates.filter(function (v) {
+          if (!v || !v.videoId) return false;
+          if (existingIds.indexOf(v.videoId) !== -1) return false;
+          var norm = normalizeTitle(v.title);
+          if (!norm) return false;
+          if (norm === currentNorm) return false;
+          // Exclude near-identical title variants of the same song
+          if (currentNorm && (norm.indexOf(currentNorm) !== -1 || currentNorm.indexOf(norm) !== -1)) {
+            if (Math.min(norm.length, currentNorm.length) >= 8) return false;
+          }
+          if (isShorts(v)) return false;
+          return true;
+        });
+
+        // Split by source for 50/50 mixing
+        var artistCandidates = candidates.filter(function (v) { return v._source === 'artist'; });
+        var genreCandidates = candidates.filter(function (v) { return v._source !== 'artist'; });
+
+        shuffle(artistCandidates);
+        shuffle(genreCandidates);
+
+        var perArtistCap = Math.max(1, Math.ceil(maxToAdd * 0.3));
+        var batchCounts = {};
+
+        function canTake(v) {
+          var key = (v.channelTitle || '').toLowerCase();
+          if (!key) return true;
+          var c = batchCounts[key] || 0;
+          return c < perArtistCap;
+        }
+
+        function take(v, out) {
+          var key = (v.channelTitle || '').toLowerCase();
+          if (key) batchCounts[key] = (batchCounts[key] || 0) + 1;
+          delete v._source;
+          out.push(v);
+        }
+
+        function fillFrom(list, out, limit) {
+          for (var i = 0; i < list.length && out.length < limit; i++) {
+            if (!canTake(list[i])) continue;
+            take(list[i], out);
+          }
+        }
+
+        var toAdd = [];
+        var half = Math.floor(maxToAdd / 2);
+        fillFrom(artistCandidates, toAdd, half);
+        fillFrom(genreCandidates, toAdd, maxToAdd);
+
+        // If we couldn't hit the target (due to caps), relax by filling remaining ignoring caps
+        if (toAdd.length < maxToAdd) {
+          var remainder = shuffle(candidates.slice());
+          for (var r = 0; r < remainder.length && toAdd.length < maxToAdd; r++) {
+            var v = remainder[r];
+            // ensure we don't add duplicates inside the batch
+            if (toAdd.some(function (x) { return x.videoId === v.videoId; })) continue;
+            delete v._source;
+            toAdd.push(v);
+          }
+        }
+
+        for (var i = 0; i < toAdd.length; i++) {
+          self.queue.push(toAdd[i]);
+        }
+
+        if (toAdd.length > 0) {
+          self._renderQueue();
+        }
+      })
+      .catch(function () {
+        // no-op
+      })
+      .then(function () {
+        self._relatedFetchInFlight = false;
+      });
   },
 
   _bindSwipeGesture: function () {

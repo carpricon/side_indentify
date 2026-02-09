@@ -64,14 +64,14 @@ body {
   top: 0;
   z-index: 100;
   background: var(--bg);
-  padding: var(--spacing-md) var(--spacing-md) var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-sm);
   border-bottom: 1px solid var(--border);
 }
 
 .header-inner {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: 6px;
 }
 
 .logo {
@@ -664,6 +664,19 @@ body {
   margin-top: var(--spacing-lg);
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+.auth-forgot {
+  text-align: center;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.auth-forgot a {
+  color: #000000;
+  text-decoration: underline;
+  font-weight: 600;
 }
 
 .auth-switch a {
@@ -1339,6 +1352,46 @@ body {
   padding: var(--spacing-sm);
   border-radius: var(--radius-md);
   transition: background 0.2s;
+}
+
+.queue-reorder-handle {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #b0b0b0;
+  flex-shrink: 0;
+}
+
+.queue-reorder-handle:active {
+  background: #f0f0f0;
+}
+
+.queue-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.queue-actions button {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: #b0b0b0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.queue-actions button:active {
+  background: #f0f0f0;
+  transform: scale(0.96);
 }
 
 .queue-item.active {
